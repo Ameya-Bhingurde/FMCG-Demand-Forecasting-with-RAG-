@@ -1,0 +1,4 @@
+FMCG Sales Report Summary
+Total Sales: 2809736 units
+Total Revenue: $14,743,029.04
+Number of Transactions: 161943

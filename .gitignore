@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - exclude documentation files
+DASHBOARD_ENHANCEMENTS.md
+DASHBOARD_UPDATES_R2.md
+DEPENDENCY_MAP.md
+DEPLOYMENT_SUMMARY.md
+DEPLOY_DASHBOARD.md
+ENHANCEMENT_SUMMARY.md
+FIX_CHECKLIST.md
+INSPECTION_REPORT.md
+MEMORY_ISSUE_FIX.md
+QUICK_REFERENCE.md
+RAG_SETUP_GUIDE.md
+README_INSPECTION.md
+SUMMARY.md
+VECTOR_STORE_ANALYSIS.md
+
+# Large files (will be handled by Git LFS if needed)
+*.pkl
+*.bin
+*.pt
+*.pth
+
+# Large data files (exceed GitHub limits)
+**/data/processed/features.csv
+**/data/processed/test_features.csv
+**/data/processed/train_features.csv
+**/data/processed/validation_features.csv
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
