@@ -1,0 +1,41 @@
+{
+  "total_records": 161943,
+  "date_range": "2022-01-21 00:00:00 to 2024-12-31 00:00:00",
+  "unique_products": 30,
+  "unique_brands": 14,
+  "unique_regions": 3,
+  "total_sales": "2809736",
+  "avg_sales_per_day": 2611.278810408922,
+  "columns": [
+    "date",
+    "sku",
+    "brand",
+    "segment",
+    "category",
+    "channel",
+    "region",
+    "pack_type",
+    "price_unit",
+    "promotion_flag",
+    "delivery_days",
+    "stock_available",
+    "delivered_qty",
+    "units_sold"
+  ],
+  "data_types": {
+    "date": "datetime64[ns]",
+    "sku": "object",
+    "brand": "object",
+    "segment": "object",
+    "category": "object",
+    "channel": "object",
+    "region": "object",
+    "pack_type": "object",
+    "price_unit": "float64",
+    "promotion_flag": "int64",
+    "delivery_days": "int64",
+    "stock_available": "int64",
+    "delivered_qty": "int64",
+    "units_sold": "int64"
+  }
+}

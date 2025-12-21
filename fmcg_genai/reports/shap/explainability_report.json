@@ -1,0 +1,146 @@
+{
+  "explainability_summary": {
+    "analysis_date": "2025-09-01T01:38:47.755942",
+    "total_features_analyzed": 60,
+    "top_features_count": 10,
+    "shap_values_calculated": 1000
+  },
+  "top_features": [
+    {
+      "feature": "price_volume_ratio",
+      "importance": 4.597093105316162
+    },
+    {
+      "feature": "price_unit",
+      "importance": 1.98605477809906
+    },
+    {
+      "feature": "delivery_sales_ratio",
+      "importance": 1.7703979015350342
+    },
+    {
+      "feature": "price_stock_ratio",
+      "importance": 1.4865055084228516
+    },
+    {
+      "feature": "delivery_days",
+      "importance": 0.8067858219146729
+    },
+    {
+      "feature": "delivery_stock_ratio",
+      "importance": 0.4718804359436035
+    },
+    {
+      "feature": "monthly_sales_trend",
+      "importance": 0.41195714473724365
+    },
+    {
+      "feature": "stock_available",
+      "importance": 0.3852362334728241
+    },
+    {
+      "feature": "quarter",
+      "importance": 0.12988582253456116
+    },
+    {
+      "feature": "month",
+      "importance": 0.12598280608654022
+    }
+  ],
+  "business_insights": {
+    "top_drivers": [
+      "price_volume_ratio",
+      "price_unit",
+      "delivery_sales_ratio",
+      "price_stock_ratio",
+      "delivery_days",
+      "delivery_stock_ratio",
+      "monthly_sales_trend",
+      "stock_available",
+      "quarter",
+      "month"
+    ],
+    "feature_analysis": {
+      "price_volume_ratio": {
+        "importance": 4.597093105316162,
+        "positive_impact": 3.9045722484588623,
+        "negative_impact": -5.072391510009766,
+        "mean_value": -0.1248782468205759,
+        "std_value": 0.9007218725621275
+      },
+      "price_unit": {
+        "importance": 1.98605477809906,
+        "positive_impact": 2.1556525230407715,
+        "negative_impact": -1.789350986480713,
+        "mean_value": 0.026255893097764663,
+        "std_value": 0.997850138795022
+      },
+      "delivery_sales_ratio": {
+        "importance": 1.7703979015350342,
+        "positive_impact": 1.6189883947372437,
+        "negative_impact": -1.8813962936401367,
+        "mean_value": -0.0929672570059141,
+        "std_value": 0.9347505930648318
+      },
+      "price_stock_ratio": {
+        "importance": 1.4865055084228516,
+        "positive_impact": 1.7247811555862427,
+        "negative_impact": -1.3188611268997192,
+        "mean_value": 0.04453720749317007,
+        "std_value": 1.139988208022099
+      },
+      "delivery_days": {
+        "importance": 0.8067858219146729,
+        "positive_impact": 0.8751516342163086,
+        "negative_impact": -0.7208266258239746,
+        "mean_value": 0.057781104153786116,
+        "std_value": 0.9962577373566263
+      },
+      "delivery_stock_ratio": {
+        "importance": 0.4718804359436035,
+        "positive_impact": 0.502148449420929,
+        "negative_impact": -0.4564955234527588,
+        "mean_value": 0.06935765136188128,
+        "std_value": 1.2666551526500205
+      },
+      "monthly_sales_trend": {
+        "importance": 0.41195714473724365,
+        "positive_impact": 0.43033820390701294,
+        "negative_impact": -0.381966233253479,
+        "mean_value": 0.24717162868209472,
+        "std_value": 1.0569746989470468
+      },
+      "stock_available": {
+        "importance": 0.3852362334728241,
+        "positive_impact": 0.37044084072113037,
+        "negative_impact": -0.3952655494213104,
+        "mean_value": 0.007975214528825396,
+        "std_value": 1.0644954263471078
+      },
+      "quarter": {
+        "importance": 0.12988582253456116,
+        "positive_impact": 0.07589029520750046,
+        "negative_impact": -0.16882583498954773,
+        "mean_value": 0.5649065460035928,
+        "std_value": 1.013618829936179
+      },
+      "month": {
+        "importance": 0.12598280608654022,
+        "positive_impact": 0.12750393152236938,
+        "negative_impact": -0.12537360191345215,
+        "mean_value": 0.5153823327785186,
+        "std_value": 1.0081023981687793
+      }
+    },
+    "recommendations": [
+      "Price optimization is crucial for sales performance",
+      "Seasonal patterns are important for sales forecasting"
+    ]
+  },
+  "model_interpretability": {
+    "global_explanations": "SHAP summary and bar plots generated",
+    "local_explanations": "Waterfall and force plots for individual predictions",
+    "interaction_analysis": "Feature interaction plots created",
+    "business_recommendations": 2
+  }
+}

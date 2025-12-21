@@ -1,0 +1,67 @@
+[
+  {
+    "query": "What were the total sales in 2023?",
+    "answer": {
+      "answer": "2510 units",
+      "sources": [
+        "On 2022-03-10, sales were 203 units, avg price $5.13, stock 146, 0 promos.",
+        "On 2022-12-01, sales were 2076 units, avg price $5.30, stock 156, 0 promos.",
+        "On 2022-12-28, sales were 2073 units, avg price $5.06, stock 155, 0 promos.",
+        "On 2023-01-22, sales were 2510 units, avg price $5.13, stock 159, 0 promos.",
+        "On 2022-06-23, sales were 1566 units, avg price $5.10, stock 153, 0 promos."
+      ]
+    }
+  },
+  {
+    "query": "Which product had the highest sales?",
+    "answer": {
+      "answer": "2022-04-27",
+      "sources": [
+        "On 2022-04-27, sales were 919 units, avg price $5.50, stock 152, 0 promos.",
+        "On 2022-11-26, sales were 1735 units, avg price $4.98, stock 148, 0 promos.",
+        "On 2022-02-19, sales were 153 units, avg price $5.13, stock 158, 0 promos.",
+        "On 2022-02-21, sales were 154 units, avg price $4.95, stock 147, 0 promos.",
+        "On 2023-09-11, sales were 3135 units, avg price $5.38, stock 153, 0 promos."
+      ]
+    }
+  },
+  {
+    "query": "What is the average price across all regions?",
+    "answer": {
+      "answer": "$5.26",
+      "sources": [
+        "Region PL-South sold 936027 units, 30 products, avg price $5.26.",
+        "Region PL-Central sold 935177 units, 30 products, avg price $5.24.",
+        "Region PL-North sold 938532 units, 30 products, avg price $5.25.",
+        "Product YO-009 sold 106753 units across 3 regions at avg price $5.20.",
+        "Product YO-003 sold 101658 units across 3 regions at avg price $5.24."
+      ]
+    }
+  },
+  {
+    "query": "How do sales compare with and without promotions?",
+    "answer": {
+      "answer": "2022-11-26",
+      "sources": [
+        "On 2022-11-26, sales were 1735 units, avg price $4.98, stock 148, 0 promos.",
+        "On 2022-11-15, sales were 1688 units, avg price $5.05, stock 151, 0 promos.",
+        "On 2024-10-10, sales were 2960 units, avg price $5.33, stock 154, 0 promos.",
+        "On 2022-08-09, sales were 1824 units, avg price $4.95, stock 157, 0 promos.",
+        "On 2022-11-29, sales were 2010 units, avg price $5.48, stock 153, 0 promos."
+      ]
+    }
+  },
+  {
+    "query": "What are the seasonal sales patterns?",
+    "answer": {
+      "answer": "2022-07-24",
+      "sources": [
+        "On 2022-07-24, sales were 1750 units, avg price $5.15, stock 156, 0 promos.",
+        "On 2022-12-31, sales were 1856 units, avg price $5.28, stock 154, 0 promos.",
+        "On 2022-09-21, sales were 1834 units, avg price $5.04, stock 168, 0 promos.",
+        "On 2022-12-02, sales were 2006 units, avg price $5.07, stock 159, 0 promos.",
+        "On 2024-05-01, sales were 3666 units, avg price $5.07, stock 162, 0 promos."
+      ]
+    }
+  }
+]

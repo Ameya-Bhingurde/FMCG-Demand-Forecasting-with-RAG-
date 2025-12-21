@@ -1,0 +1,18 @@
+{
+  "prophet_params": {
+    "changepoint_prior_scale": 0.05,
+    "seasonality_prior_scale": 10.0,
+    "holidays_prior_scale": 10.0,
+    "seasonality_mode": "multiplicative"
+  },
+  "xgboost_params": {
+    "n_estimators": 1000,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42
+  },
+  "target_column": "units_sold",
+  "training_date": "2025-09-01T01:27:55.229753"
+}

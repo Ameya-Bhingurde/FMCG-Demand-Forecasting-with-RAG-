@@ -1,0 +1,18 @@
+{
+  "prophet_metrics": {
+    "mae": 1530.120897997467,
+    "rmse": 1786.4830823806167,
+    "mape": 48.27730556519623
+  },
+  "xgboost_metrics": {
+    "mae": 0.19390276074409485,
+    "rmse": 0.2811661701307301,
+    "r2": 0.9986926913261414,
+    "mape": Infinity
+  },
+  "training_summary": {
+    "prophet_model_path": "models/prophet.pkl",
+    "xgboost_model_path": "models/xgboost_sales.pkl",
+    "training_date": "2025-09-01T01:27:55.231752"
+  }
+}

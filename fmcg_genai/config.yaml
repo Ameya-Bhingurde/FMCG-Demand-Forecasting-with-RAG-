@@ -1,0 +1,85 @@
+# FMCG Generative AI Project Configuration
+
+# Data paths
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  main_file: "FMCG_2022_2024.csv"
+  cleaned_file: "cleaned.csv"
+  features_file: "features.csv"
+
+# Model paths
+models:
+  prophet_model: "models/prophet.pkl"
+  xgboost_model: "models/xgboost_sales.pkl"
+  vector_store: "vector_store/faiss_index"
+
+# Reports paths
+reports:
+  evaluation: "reports/evaluation.json"
+  shap_dir: "reports/shap"
+
+# Data preprocessing parameters
+preprocessing:
+  train_split_date: "2023-06-30"  # Train up to mid-2023
+  test_split_date: "2023-07-01"   # Test from late 2023 onwards
+  outlier_threshold: 3.0  # Standard deviations for outlier detection
+  min_date: "2022-01-01"
+  max_date: "2024-12-31"
+
+# Feature engineering parameters
+features:
+  lag_features: [1, 7, 14, 30]  # Days for lag features
+  rolling_windows: [7, 14, 30]  # Days for rolling averages
+  categorical_columns: ["brand", "segment", "category", "channel", "region", "pack_type"]
+  target_column: "units_sold"
+
+# Model parameters
+models_config:
+  prophet:
+    changepoint_prior_scale: 0.05
+    seasonality_prior_scale: 10.0
+    holidays_prior_scale: 10.0
+    seasonality_mode: "multiplicative"
+  
+  xgboost:
+    n_estimators: 1000
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+
+# RAG pipeline parameters
+rag:
+  chunk_size: 1000
+  chunk_overlap: 200
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  llm_model: "google/flan-t5-base"  # Alternative: "microsoft/DialoGPT-medium"
+  max_tokens: 512
+  temperature: 0.7
+  top_k: 5
+
+# API Keys (replace with your actual keys)
+api_keys:
+  openai_api_key: "your-openai-api-key-here"  # Optional: for OpenAI models
+  huggingface_token: "your-huggingface-token-here"  # Optional: for private models
+
+# Dashboard parameters
+dashboard:
+  port: 8501
+  host: "localhost"
+  title: "FMCG Sales Analytics & Forecasting"
+  theme: "light"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/fmcg_pipeline.log"
+
+# Performance settings
+performance:
+  n_jobs: -1  # Use all CPU cores
+  memory_efficient: true
+  batch_size: 1000 
