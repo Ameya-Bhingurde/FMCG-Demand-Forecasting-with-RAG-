@@ -16,10 +16,12 @@ else
     echo "✅ Models found. Skipping training."
 fi
 
-# Check if vector store exists
+# Check if vector store exists; if not, build it via run_rag_pipeline()
+# (the public method that handles load_sales_data → create_documents →
+#  create_vector_store → persist faiss_index.bin + documents.pkl + embeddings.pkl)
 if [ ! -f "vector_store/faiss_index.bin" ]; then
-    echo "🔍 Vector store not found. Creating vector store..."
-    python -c "from src.rag_pipeline import FMCGRAGPipeline; pipeline = FMCGRAGPipeline('config.yaml'); pipeline.create_vector_store()"
+    echo "🔍 Vector store not found. Building it now..."
+    python -c "from src.rag_pipeline import FMCGRAGPipeline; FMCGRAGPipeline('config.yaml').run_rag_pipeline()"
 else
     echo "✅ Vector store found."
 fi
