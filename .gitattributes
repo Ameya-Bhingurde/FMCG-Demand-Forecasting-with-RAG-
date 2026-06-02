@@ -1,7 +1,7 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
-/fmcg_genai/data/processed/cleaned.csv filter=lfs diff=lfs merge=lfs -text
-/fmcg_genai/data/raw/FMCG_2022_2024.csv filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
 *.html filter=lfs diff=lfs merge=lfs -text
 *.json filter=lfs diff=lfs merge=lfs -text
+/fmcg_genai/data/processed/cleaned.csv filter=lfs diff=lfs merge=lfs -text
+/fmcg_genai/data/raw/FMCG_2022_2024.csv filter=lfs diff=lfs merge=lfs -text
 *.parquet filter=lfs diff=lfs merge=lfs -text
