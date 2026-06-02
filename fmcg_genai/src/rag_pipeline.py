@@ -95,6 +95,8 @@ class FMCGRAGPipeline:
             model_name=self.rag_config.get("groq_model", "llama-3.1-8b-instant"),
             temperature=self.rag_config.get("temperature", 0.2),
             max_tokens=self.rag_config.get("max_tokens", 512),
+            max_retries=5,            # survive transient network blips
+            timeout=30,               # don't hang the UI on a slow request
         )
         self.qa_prompt = ChatPromptTemplate.from_messages([
             ("system",
@@ -148,6 +150,10 @@ class FMCGRAGPipeline:
         """
         df = df.copy()
         df['year'] = pd.DatetimeIndex(df['date']).year
+        df['month'] = pd.DatetimeIndex(df['date']).month
+        month_names = {1: 'January', 2: 'February', 3: 'March', 4: 'April',
+                       5: 'May', 6: 'June', 7: 'July', 8: 'August',
+                       9: 'September', 10: 'October', 11: 'November', 12: 'December'}
         docs = []
 
         # === Roll-up summaries (~70 docs) ===
@@ -224,6 +230,114 @@ class FMCGRAGPipeline:
                     "category": cat,
                 },
             })
+
+        # Per-year, per-month (handles "which month had highest sales")
+        for (year, month), g in df.groupby(['year', 'month']):
+            units = g['units_sold'].sum()
+            ap = g['price_unit'].mean()
+            docs.append({
+                "content": (
+                    f"Total sales in {month_names[int(month)]} {year} were "
+                    f"{units:,.0f} units at average price ${ap:.2f} per unit."
+                ),
+                "metadata": {
+                    "scope": "year_month",
+                    "year": int(year),
+                    "month": int(month),
+                    "month_name": month_names[int(month)],
+                },
+            })
+
+        # Per-year, per-month, per-category (handles "best month for milk in 2023")
+        for (year, month, cat), g in df.groupby(['year', 'month', 'category']):
+            units = g['units_sold'].sum()
+            ap = g['price_unit'].mean()
+            docs.append({
+                "content": (
+                    f"Total sales of {cat} category in {month_names[int(month)]} {year} "
+                    f"were {units:,.0f} units at average price ${ap:.2f} per unit."
+                ),
+                "metadata": {
+                    "scope": "year_month_category",
+                    "year": int(year),
+                    "month": int(month),
+                    "category": cat,
+                },
+            })
+
+        # Per-year monthly breakdown — single doc listing all 12 months with
+        # the peak/lowest pre-computed. Leading with the answer first so the
+        # embedding picks up "which month had the highest" type queries.
+        for year, g in df.groupby('year'):
+            monthly = g.groupby('month')['units_sold'].sum()
+            peak_m = int(monthly.idxmax())
+            peak_v = int(monthly.max())
+            low_m = int(monthly.idxmin())
+            low_v = int(monthly.min())
+            month_lines = ", ".join(
+                f"{month_names[int(m)]}: {int(u):,} units"
+                for m, u in monthly.items()
+            )
+            docs.append({
+                "content": (
+                    f"The month with the highest sales in {year} was "
+                    f"{month_names[peak_m]} with {peak_v:,} units. "
+                    f"The month with the lowest sales in {year} was "
+                    f"{month_names[low_m]} with {low_v:,} units. "
+                    f"Full monthly breakdown for {year}: {month_lines}."
+                ),
+                "metadata": {"scope": "year_monthly_breakdown", "year": int(year)},
+            })
+
+        # Per-year regional breakdown — leading with the top region.
+        for year, g in df.groupby('year'):
+            regional = g.groupby('region')['units_sold'].sum().sort_values(ascending=False)
+            top_r = regional.index[0]
+            top_v = int(regional.iloc[0])
+            reg_lines = ", ".join(
+                f"{r}: {int(u):,} units" for r, u in regional.items()
+            )
+            docs.append({
+                "content": (
+                    f"The top-performing region in {year} was {top_r} "
+                    f"with {top_v:,} units. The region with the most sales "
+                    f"in {year} was {top_r}. Full regional breakdown for "
+                    f"{year}: {reg_lines}."
+                ),
+                "metadata": {"scope": "year_regional_breakdown", "year": int(year)},
+            })
+
+        # Per-year category breakdown — leading with the top category.
+        for year, g in df.groupby('year'):
+            categorical = g.groupby('category')['units_sold'].sum().sort_values(ascending=False)
+            top_c = categorical.index[0]
+            top_v = int(categorical.iloc[0])
+            cat_lines = ", ".join(
+                f"{c}: {int(u):,} units" for c, u in categorical.items()
+            )
+            docs.append({
+                "content": (
+                    f"The top-performing category in {year} was {top_c} "
+                    f"with {top_v:,} units. The category with the most sales "
+                    f"in {year} was {top_c}. Full category breakdown for "
+                    f"{year}: {cat_lines}."
+                ),
+                "metadata": {"scope": "year_category_breakdown", "year": int(year)},
+            })
+
+        # Per-brand totals (across all years/regions)
+        if 'brand' in df.columns:
+            for brand, g in df.groupby('brand'):
+                units = g['units_sold'].sum()
+                ap = g['price_unit'].mean()
+                cats = ", ".join(sorted(g['category'].unique().tolist()))
+                docs.append({
+                    "content": (
+                        f"Brand {brand} had total sales of {units:,.0f} units at average "
+                        f"price ${ap:.2f} per unit. Categories: {cats}."
+                    ),
+                    "metadata": {"scope": "brand", "brand": brand},
+                })
 
         # === Granular facts (original docs, preserved) ===
 
@@ -337,14 +451,25 @@ class FMCGRAGPipeline:
                 answer = self.qa_chain.invoke({"context": context, "question": question})
                 return {"answer": answer.strip(), "sources": sources}
             except Exception as e:
+                err_str = str(e).lower()
                 logger.error(f"LangChain Groq generation failed: {e}")
-                return {
-                    "answer": (
-                        "I retrieved relevant context but couldn't generate an answer. "
-                        "Check that GROQ_API_KEY is set in your .env file."
-                    ),
-                    "sources": sources,
-                }
+                if "connection" in err_str or "timeout" in err_str:
+                    hint = (
+                        "Transient connection issue talking to Groq — usually clears up "
+                        "in a few seconds. Please retry the question."
+                    )
+                elif "401" in err_str or "invalid" in err_str and "key" in err_str:
+                    hint = (
+                        "Groq rejected the API key. Confirm GROQ_API_KEY in your .env "
+                        "file is current and not revoked."
+                    )
+                elif "429" in err_str or "rate" in err_str:
+                    hint = (
+                        "Groq rate limit hit. Wait ~30 seconds and retry."
+                    )
+                else:
+                    hint = f"Generation failed: {e}"
+                return {"answer": hint, "sources": sources}
 
         return {"answer": "I couldn't find relevant information to answer that question.", "sources": []}
     
