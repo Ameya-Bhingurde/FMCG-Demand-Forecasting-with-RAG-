@@ -55,9 +55,9 @@ rag:
   chunk_size: 1000
   chunk_overlap: 200
   embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-  llm_model: "google/flan-t5-base"  # Alternative: "microsoft/DialoGPT-medium"
+  groq_model: "llama-3.1-8b-instant"  # Llama 3.1 8B via Groq, fast + cheap for RAG
   max_tokens: 512
-  temperature: 0.7
+  temperature: 0.2  # Low for grounded analytical answers
   top_k: 5
 
 # API Keys (replace with your actual keys)

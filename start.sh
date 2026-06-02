@@ -9,7 +9,7 @@ echo "🚀 Starting FMCG Demand Forecasting Platform..."
 cd fmcg_genai
 
 # Check if models exist, if not run the pipeline
-if [ ! -f "models/prophet_model.pkl" ] || [ ! -f "models/xgboost_model.pkl" ]; then
+if [ ! -f "models/prophet.pkl" ] || [ ! -f "models/xgboost_sales.pkl" ]; then
     echo "📦 Models not found. Running pipeline to train models..."
     python run_pipeline.py
 else
