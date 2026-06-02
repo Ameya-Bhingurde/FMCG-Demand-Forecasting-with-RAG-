@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 FMCG RAG Pipeline
-Full rewrite with FAISS, HuggingFace QA, OpenAI fallback, and dynamic graphing
+FAISS retrieval + LangChain orchestration + Llama 3 via Groq for generative answers.
+Pandas-based analytical answers handle numeric questions for speed and accuracy.
 """
 
 import os
@@ -16,16 +17,21 @@ import base64
 import pickle
 import faiss
 
+# Load environment variables from .env (resolved relative to this module, not CWD)
+try:
+    from dotenv import load_dotenv
+    _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(dotenv_path=_ENV_PATH)
+except ImportError:
+    pass
+
 # Embeddings
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline
 
-# Optional OpenAI fallback
-try:
-    from openai import OpenAI
-    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-except ImportError:
-    openai_client = None
+# LangChain + Groq for generative RAG
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 # Logging
 logging.basicConfig(level=logging.INFO,
@@ -77,10 +83,29 @@ class FMCGRAGPipeline:
         self.embedding_model = SentenceTransformer(model_name)
         logger.info(f"Loaded embedding model: {model_name}")
 
-        # HuggingFace QA
-        self.qa_pipeline = pipeline("question-answering",
-                                    model="deepset/roberta-base-squad2")
-        logger.info("Loaded HuggingFace QA model.")
+        # LangChain + Groq generative LLM
+        groq_api_key = os.getenv("GROQ_API_KEY", "")
+        if not groq_api_key:
+            logger.warning(
+                "GROQ_API_KEY not set. Generative RAG fallback will fail. "
+                "Set it in your .env file (see .env.example)."
+            )
+        self.llm = ChatGroq(
+            api_key=groq_api_key or "missing",
+            model_name=self.rag_config.get("groq_model", "llama-3.1-8b-instant"),
+            temperature=self.rag_config.get("temperature", 0.2),
+            max_tokens=self.rag_config.get("max_tokens", 512),
+        )
+        self.qa_prompt = ChatPromptTemplate.from_messages([
+            ("system",
+             "You are an FMCG sales analyst. Answer the user's question using ONLY the "
+             "context below. If the context does not contain enough information, say so "
+             "honestly. Be concise (2-3 sentences) and quantitative when possible.\n\n"
+             "=== CONTEXT ===\n{context}"),
+            ("human", "{question}")
+        ])
+        self.qa_chain = self.qa_prompt | self.llm | StrOutputParser()
+        logger.info(f"Initialized LangChain Groq chain: model={self.llm.model_name}")
 
         # Vector store
         self.vector_store = None
@@ -92,7 +117,7 @@ class FMCGRAGPipeline:
         logger.info("setup_embeddings() called — embeddings already initialized in __init__.")
 
     def setup_llm(self):
-        logger.info("setup_llm() called — LLM already initialized in __init__.")
+        logger.info("setup_llm() called — LangChain Groq chain already initialized in __init__.")
 
     # =============== Data ===============
     def load_sales_data(self):
@@ -188,22 +213,28 @@ class FMCGRAGPipeline:
         except Exception as e:
             logger.warning(f"Analytical answer generation failed: {e}")
         
-        # Fallback to RAG retrieval
+        # Fallback to RAG: FAISS retrieval + LangChain Groq generation
         if self.vector_store is not None and self.documents is not None:
-            # Retrieve relevant documents
-            D, I = self.vector_store.search(self.embedding_model.encode([question]).astype("float32"), k=5)
+            top_k = self.rag_config.get("top_k", 5)
+            query_embedding = self.embedding_model.encode([question]).astype("float32")
+            D, I = self.vector_store.search(query_embedding, k=top_k)
             retrieved_docs = [self.documents[i] for i in I[0]]
-            context = " ".join([doc["content"] for doc in retrieved_docs])
-            sources = [doc["content"][:200] + "..." for doc in retrieved_docs[:3]]  # Truncate sources
-            
-            # Use QA pipeline for extraction
-            if context:
-                result = self.qa_pipeline(question=question, context=context)
+            context = "\n".join([doc["content"] for doc in retrieved_docs])
+            sources = [doc["content"][:200] + "..." for doc in retrieved_docs[:3]]
+
+            try:
+                answer = self.qa_chain.invoke({"context": context, "question": question})
+                return {"answer": answer.strip(), "sources": sources}
+            except Exception as e:
+                logger.error(f"LangChain Groq generation failed: {e}")
                 return {
-                    "answer": result["answer"],
-                    "sources": sources
+                    "answer": (
+                        "I retrieved relevant context but couldn't generate an answer. "
+                        "Check that GROQ_API_KEY is set in your .env file."
+                    ),
+                    "sources": sources,
                 }
-        
+
         return {"answer": "I couldn't find relevant information to answer that question.", "sources": []}
     
     def _generate_analytical_answer(self, question, df):

@@ -1,6 +1,9 @@
-# Core ML and Data Science
-pandas>=2.0.0
+# Core Dependencies (Install First)
+joblib>=1.3.0
 numpy>=1.24.0
+pandas>=2.0.0
+
+# ML and Data Science
 scikit-learn>=1.3.0
 xgboost>=1.7.0
 prophet>=1.1.0
@@ -11,33 +14,25 @@ seaborn>=0.12.0
 plotly>=5.15.0
 shap>=0.42.0
 
-# Generative AI and RAG
-langchain>=0.0.300
-langchain-community>=0.0.10
-faiss-cpu>=1.7.4
-sentence-transformers>=2.2.0
-transformers>=4.30.0
-torch>=2.0.0
-accelerate>=0.20.0
-
 # Dashboard
 streamlit>=1.25.0
-# streamlit-plotly-events>=0.0.7  # Commented out due to compatibility issues
 
 # Data Processing
 pyyaml>=6.0
 python-dateutil>=2.8.0
 holidays>=0.25
-
-# Utilities
 tqdm>=4.65.0
-joblib>=1.3.0
-# pickle5>=0.0.12  # Commented out due to compatibility issues
 
-# Optional: MLOps
-# mlflow>=2.5.0
-# docker>=6.1.0
+# AI and RAG
+torch>=2.0.0
+transformers>=4.30.0
+sentence-transformers>=2.2.0
+accelerate>=0.20.0
+faiss-cpu>=1.7.4
 
-# Development
-jupyter>=1.0.0
-ipykernel>=6.25.0 
+# LangChain + Groq for generative RAG
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+langchain-groq>=0.1.0
+python-dotenv>=1.0.0

@@ -1,0 +1,3 @@
+# Root requirements.txt for HuggingFace Spaces.
+# Pulls in the canonical dependency list from fmcg_genai/requirements.txt
+-r fmcg_genai/requirements.txt

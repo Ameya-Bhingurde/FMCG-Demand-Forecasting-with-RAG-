@@ -26,6 +26,12 @@ venv/
 ENV/
 env/
 
+# Secrets — NEVER commit
+.env
+.env.local
+*.env
+!.env.example
+
 # IDE
 .vscode/
 .idea/
