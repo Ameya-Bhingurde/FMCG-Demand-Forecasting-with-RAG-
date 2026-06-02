@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first (cached as a layer when code changes)
-COPY requirements.txt .
+# Install Python deps first (cached as a layer when only code changes).
+# Root requirements.txt delegates to fmcg_genai/requirements.txt, so copy both.
+COPY requirements.txt ./requirements.txt
+COPY fmcg_genai/requirements.txt ./fmcg_genai/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
