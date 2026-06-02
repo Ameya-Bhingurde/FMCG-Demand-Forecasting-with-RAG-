@@ -3,9 +3,8 @@ title: FMCG Demand Forecasting with RAG
 emoji: 📊
 colorFrom: blue
 colorTo: purple
-sdk: streamlit
-sdk_version: "1.25.0"
-app_file: fmcg_genai/src/dashboard_app_enhanced.py
+sdk: docker
+app_port: 7860
 pinned: false
 license: mit
 ---
