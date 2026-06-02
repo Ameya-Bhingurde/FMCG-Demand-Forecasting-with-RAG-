@@ -70,6 +70,20 @@ st.markdown("""
         border-left: 4px solid #1f77b4;
         border-radius: 5px;
         margin: 1rem 0;
+        color: #1f2937;
+    }
+    .insight-box h4 {
+        color: #111827;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+    .insight-box p {
+        color: #1f2937;
+        margin: 0.3rem 0;
+    }
+    .insight-box ol, .insight-box ul {
+        color: #1f2937;
+        margin: 0.3rem 0 0.3rem 1.2rem;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 2rem;
@@ -233,30 +247,58 @@ class EnhancedFMCGDashboard:
         col1, col2 = st.columns(2)
         
         with col1:
-            # Top performing products
+            # Top performing products — render the whole card as one HTML block
+            # so the list sits inside the styled .insight-box div.
             top_products = cleaned_df.groupby('sku')['units_sold'].sum().nlargest(3)
-            st.markdown("""
-            <div class="insight-box">
-                <h4>🏆 Top Performers</h4>
-            """, unsafe_allow_html=True)
-            for idx, (sku, sales) in enumerate(top_products.items(), 1):
-                st.write(f"{idx}. **{sku}**: {sales:,.0f} units")
-            st.markdown("</div>", unsafe_allow_html=True)
-        
+            top_list_html = "".join(
+                f"<li><strong>{sku}</strong>: {sales:,.0f} units</li>"
+                for sku, sales in top_products.items()
+            )
+            st.markdown(
+                f"""
+                <div class="insight-box">
+                    <h4>🏆 Top Performers</h4>
+                    <ol>{top_list_html}</ol>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
         with col2:
-            # Promotion effectiveness
-            promo_sales = cleaned_df[cleaned_df['promotion_flag'] == 1]['units_sold'].mean()
-            regular_sales = cleaned_df[cleaned_df['promotion_flag'] == 0]['units_sold'].mean()
-            promo_lift = ((promo_sales - regular_sales) / regular_sales * 100) if regular_sales > 0 else 0
-            
-            st.markdown(f"""
-            <div class="insight-box">
-                <h4>🎯 Promotion Impact</h4>
-                <p><strong>Sales Lift:</strong> {promo_lift:.1f}%</p>
-                <p><strong>Promo Avg:</strong> {promo_sales:.0f} units/day</p>
-                <p><strong>Regular Avg:</strong> {regular_sales:.0f} units/day</p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Promotion effectiveness — guard against datasets with no
+            # promotion-flagged rows (current dataset has 0 promotions),
+            # which would otherwise produce a NaN-filled blank card.
+            promo_rows = cleaned_df[cleaned_df['promotion_flag'] == 1]
+            regular_rows = cleaned_df[cleaned_df['promotion_flag'] == 0]
+
+            if len(promo_rows) == 0 or len(regular_rows) == 0:
+                promo_html = (
+                    "<p>No promotion-flagged transactions in the loaded dataset. "
+                    "Promotion impact metrics will populate once promotional "
+                    "periods are tagged in the source data.</p>"
+                )
+            else:
+                promo_sales = promo_rows['units_sold'].mean()
+                regular_sales = regular_rows['units_sold'].mean()
+                promo_lift = (
+                    ((promo_sales - regular_sales) / regular_sales * 100)
+                    if regular_sales > 0 else 0
+                )
+                promo_html = (
+                    f"<p><strong>Sales Lift:</strong> {promo_lift:.1f}%</p>"
+                    f"<p><strong>Promo Avg:</strong> {promo_sales:.0f} units/day</p>"
+                    f"<p><strong>Regular Avg:</strong> {regular_sales:.0f} units/day</p>"
+                )
+
+            st.markdown(
+                f"""
+                <div class="insight-box">
+                    <h4>🎯 Promotion Impact</h4>
+                    {promo_html}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         
         # Seasonal patterns
         cleaned_df['month'] = cleaned_df['date'].dt.month

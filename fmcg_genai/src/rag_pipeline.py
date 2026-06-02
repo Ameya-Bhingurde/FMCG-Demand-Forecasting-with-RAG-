@@ -98,9 +98,18 @@ class FMCGRAGPipeline:
         )
         self.qa_prompt = ChatPromptTemplate.from_messages([
             ("system",
-             "You are an FMCG sales analyst. Answer the user's question using ONLY the "
-             "context below. If the context does not contain enough information, say so "
-             "honestly. Be concise (2-3 sentences) and quantitative when possible.\n\n"
+             "You are a senior FMCG sales analyst answering questions for a business "
+             "stakeholder. Use ONLY the context below — never invent data that isn't "
+             "there. Respect every filter the user mentions (product, region, year, "
+             "category, brand): if the user asks about 'milk in PL-South in 2023', "
+             "only use context lines that match those filters and explicitly say so. "
+             "If the context lacks the information to answer accurately, say so "
+             "honestly and describe what you DO see in the retrieved context.\n\n"
+             "Style rules:\n"
+             "- Provide a thorough, well-structured answer of 4-7 sentences.\n"
+             "- Be quantitative — cite specific numbers from the context.\n"
+             "- For comparison or causation questions, address both sides explicitly.\n"
+             "- End with a one-line takeaway when natural.\n\n"
              "=== CONTEXT ===\n{context}"),
             ("human", "{question}")
         ])
@@ -130,7 +139,94 @@ class FMCGRAGPipeline:
 
     # =============== Documents ===============
     def create_documents(self, df):
+        """
+        Build a multi-resolution summary corpus so the RAG retriever has the
+        right grain of pre-aggregated context regardless of how a question is
+        framed. Roll-ups are placed first so they tend to win retrieval for
+        aggregate questions; daily/SKU/region facts come after for granular
+        questions.
+        """
+        df = df.copy()
+        df['year'] = pd.DatetimeIndex(df['date']).year
         docs = []
+
+        # === Roll-up summaries (~70 docs) ===
+
+        # Overall total
+        total_units = df['units_sold'].sum()
+        avg_price = df['price_unit'].mean()
+        total_revenue = (df['units_sold'] * df['price_unit']).sum()
+        years_present = sorted(df['year'].unique().tolist())
+        docs.append({
+            "content": (
+                f"Overall total sales across the full dataset "
+                f"({years_present[0]}-{years_present[-1]}): {total_units:,.0f} units sold "
+                f"across {df['region'].nunique()} regions, {df['sku'].nunique()} SKUs, "
+                f"and {df['category'].nunique()} categories. "
+                f"Average price per unit: ${avg_price:.2f}. "
+                f"Total revenue: ${total_revenue:,.0f}."
+            ),
+            "metadata": {"scope": "overall"},
+        })
+
+        # Per-year totals — opening phrased to match natural questions
+        for year, g in df.groupby('year'):
+            units = g['units_sold'].sum()
+            ap = g['price_unit'].mean()
+            rev = (g['units_sold'] * g['price_unit']).sum()
+            promos = int((g['promotion_flag'] == 1).sum())
+            docs.append({
+                "content": (
+                    f"Total sales in {year} were {units:,.0f} units. "
+                    f"Average price was ${ap:.2f} per unit, total revenue ${rev:,.0f}. "
+                    f"Promotion-flagged transactions: {promos:,}."
+                ),
+                "metadata": {"scope": "year", "year": int(year)},
+            })
+
+        # Per-year, per-region
+        for (year, region), g in df.groupby(['year', 'region']):
+            units = g['units_sold'].sum()
+            ap = g['price_unit'].mean()
+            docs.append({
+                "content": (
+                    f"Total sales in region {region} in {year} were {units:,.0f} units "
+                    f"at average price ${ap:.2f} per unit."
+                ),
+                "metadata": {"scope": "year_region", "year": int(year), "region": region},
+            })
+
+        # Per-year, per-category
+        for (year, cat), g in df.groupby(['year', 'category']):
+            units = g['units_sold'].sum()
+            ap = g['price_unit'].mean()
+            docs.append({
+                "content": (
+                    f"Total sales of {cat} category in {year} were {units:,.0f} units "
+                    f"at average price ${ap:.2f} per unit."
+                ),
+                "metadata": {"scope": "year_category", "year": int(year), "category": cat},
+            })
+
+        # Per-year, per-region, per-category (key cross-filter)
+        for (year, region, cat), g in df.groupby(['year', 'region', 'category']):
+            units = g['units_sold'].sum()
+            ap = g['price_unit'].mean()
+            docs.append({
+                "content": (
+                    f"Total sales of {cat} category in region {region} in {year} were "
+                    f"{units:,.0f} units at average price ${ap:.2f} per unit."
+                ),
+                "metadata": {
+                    "scope": "year_region_category",
+                    "year": int(year),
+                    "region": region,
+                    "category": cat,
+                },
+            })
+
+        # === Granular facts (original docs, preserved) ===
+
         # Daily summary
         for _, row in df.groupby("date").agg({
             "units_sold": "sum",
@@ -138,24 +234,43 @@ class FMCGRAGPipeline:
             "stock_available": "mean",
             "promotion_flag": "sum"
         }).reset_index().iterrows():
-            docs.append({"content": f"On {row['date'].strftime('%Y-%m-%d')}, sales were {row['units_sold']:.0f} units, avg price ${row['price_unit']:.2f}, stock {row['stock_available']:.0f}, {row['promotion_flag']} promos.",
-                         "metadata": {"date": row['date'].strftime('%Y-%m-%d')}})
-        # Product summary
+            docs.append({
+                "content": (
+                    f"On {row['date'].strftime('%Y-%m-%d')}, sales were "
+                    f"{row['units_sold']:.0f} units, avg price ${row['price_unit']:.2f}, "
+                    f"stock {row['stock_available']:.0f}, {row['promotion_flag']} promos."
+                ),
+                "metadata": {"date": row['date'].strftime('%Y-%m-%d')},
+            })
+
+        # Per-SKU
         for _, row in df.groupby("sku").agg({
             "units_sold": "sum",
             "price_unit": "mean",
             "region": "nunique"
         }).reset_index().iterrows():
-            docs.append({"content": f"Product {row['sku']} sold {row['units_sold']:.0f} units across {row['region']} regions at avg price ${row['price_unit']:.2f}.",
-                         "metadata": {"sku": row['sku']}})
-        # Region summary
+            docs.append({
+                "content": (
+                    f"Product {row['sku']} sold {row['units_sold']:.0f} units across "
+                    f"{row['region']} regions at avg price ${row['price_unit']:.2f}."
+                ),
+                "metadata": {"sku": row['sku']},
+            })
+
+        # Per-region
         for _, row in df.groupby("region").agg({
             "units_sold": "sum",
             "price_unit": "mean",
             "sku": "nunique"
         }).reset_index().iterrows():
-            docs.append({"content": f"Region {row['region']} sold {row['units_sold']:.0f} units, {row['sku']} products, avg price ${row['price_unit']:.2f}.",
-                         "metadata": {"region": row['region']}})
+            docs.append({
+                "content": (
+                    f"Region {row['region']} sold {row['units_sold']:.0f} units, "
+                    f"{row['sku']} products, avg price ${row['price_unit']:.2f}."
+                ),
+                "metadata": {"region": row['region']},
+            })
+
         return docs
 
     # =============== Vector Store ===============
@@ -197,23 +312,19 @@ class FMCGRAGPipeline:
     def answer_query(self, question, context=None):
         """
         Answer a query and return both answer and sources.
+
+        Routing: every question goes through the LangChain LCEL chain
+        (ChatPromptTemplate | ChatGroq | StrOutputParser) over FAISS-retrieved
+        context. The previous keyword-based analytical fast-path was removed
+        because it intercepted filtered questions and returned generic
+        unfiltered aggregations. Trusting the LLM with grounded context plus
+        a low-temperature prompt produces more accurate, verbose answers.
+
         Returns: dict {'answer': str, 'sources': list}
         """
         sources = []
-        
-        # First, try to answer analytically from the actual data
-        try:
-            df = self.load_sales_data()
-            analytical_answer = self._generate_analytical_answer(question, df)
-            if analytical_answer:
-                return {
-                    "answer": analytical_answer,
-                    "sources": ["Computed from sales data analytics"]
-                }
-        except Exception as e:
-            logger.warning(f"Analytical answer generation failed: {e}")
-        
-        # Fallback to RAG: FAISS retrieval + LangChain Groq generation
+
+        # RAG: FAISS retrieval + LangChain Groq generation
         if self.vector_store is not None and self.documents is not None:
             top_k = self.rag_config.get("top_k", 5)
             query_embedding = self.embedding_model.encode([question]).astype("float32")
@@ -237,91 +348,6 @@ class FMCGRAGPipeline:
 
         return {"answer": "I couldn't find relevant information to answer that question.", "sources": []}
     
-    def _generate_analytical_answer(self, question, df):
-        """Generate analytical answers based on actual data analysis"""
-        question_lower = question.lower()
-        
-        # Total sales questions
-        if any(word in question_lower for word in ['total sales', 'overall sales', 'sales volume']):
-            if '2023' in question_lower:
-                sales_2023 = df[df['date'].dt.year == 2023]['units_sold'].sum()
-                return f"Total sales in 2023 were {sales_2023:,} units."
-            elif '2024' in question_lower:
-                sales_2024 = df[df['date'].dt.year == 2024]['units_sold'].sum()
-                return f"Total sales in 2024 were {sales_2024:,} units."
-            else:
-                total_sales = df['units_sold'].sum()
-                return f"Total sales across all periods were {total_sales:,} units."
-        
-        # Top product questions
-        if any(word in question_lower for word in ['highest sales', 'top product', 'best selling', 'most sold']):
-            top_product = df.groupby('sku')['units_sold'].sum().idxmax()
-            top_sales = df.groupby('sku')['units_sold'].sum().max()
-            return f"The product with the highest sales is {top_product} with {top_sales:,} units sold."
-        
-        # Average price questions
-        if 'average price' in question_lower or 'avg price' in question_lower:
-            avg_price = df['price_unit'].mean()
-            return f"The average price per unit is ${avg_price:.2f}."
-        
-        # Regional performance
-        if 'region' in question_lower and any(word in question_lower for word in ['best', 'top', 'highest']):
-            top_region = df.groupby('region')['units_sold'].sum().idxmax()
-            region_sales = df.groupby('region')['units_sold'].sum().max()
-            return f"The best performing region is {top_region} with {region_sales:,} units sold."
-        
-        # Price vs sales correlation
-        if 'price' in question_lower and any(word in question_lower for word in ['affect', 'impact', 'correlation', 'relationship']):
-            correlation = df[['price_unit', 'units_sold']].corr().iloc[0, 1]
-            avg_price = df['price_unit'].mean()
-            high_price_sales = df[df['price_unit'] > avg_price]['units_sold'].mean()
-            low_price_sales = df[df['price_unit'] <= avg_price]['units_sold'].mean()
-            
-            if correlation < -0.3:
-                trend = "negative correlation"
-                explanation = "higher prices tend to result in lower sales volume"
-            elif correlation > 0.3:
-                trend = "positive correlation"
-                explanation = "higher prices are associated with higher sales volume"
-            else:
-                trend = "weak correlation"
-                explanation = "price has minimal direct impact on sales volume"
-            
-            return f"There is a {trend} ({correlation:.2f}) between price and sales. Products priced above average (${avg_price:.2f}) sell {high_price_sales:.0f} units/day on average, while those below average sell {low_price_sales:.0f} units/day. This suggests {explanation}."
-        
-        # Seasonal patterns
-        if 'seasonal' in question_lower or 'pattern' in question_lower:
-            monthly_avg = df.groupby(df['date'].dt.month)['units_sold'].mean()
-            peak_month = monthly_avg.idxmax()
-            low_month = monthly_avg.idxmin()
-            month_names = {1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
-                          7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'}
-            return f"Seasonal analysis shows peak sales in {month_names[peak_month]} ({monthly_avg[peak_month]:.0f} units/day) and lowest in {month_names[low_month]} ({monthly_avg[low_month]:.0f} units/day)."
-        
-        # Peak month
-        if 'peak' in question_lower and 'month' in question_lower:
-            if '2024' in question_lower:
-                df_2024 = df[df['date'].dt.year == 2024]
-                monthly_sales = df_2024.groupby(df_2024['date'].dt.month)['units_sold'].sum()
-            else:
-                monthly_sales = df.groupby(df['date'].dt.month)['units_sold'].sum()
-            
-            peak_month = monthly_sales.idxmax()
-            peak_sales = monthly_sales.max()
-            month_names = {1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
-                          7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'}
-            year_str = "in 2024" if '2024' in question_lower else "overall"
-            return f"The peak sales month {year_str} was {month_names[peak_month]} with {peak_sales:,} units sold."
-        
-        # Stock availability impact
-        if 'stock' in question_lower and any(word in question_lower for word in ['impact', 'affect', 'availability']):
-            high_stock = df[df['stock_available'] > df['stock_available'].median()]['units_sold'].mean()
-            low_stock = df[df['stock_available'] <= df['stock_available'].median()]['units_sold'].mean()
-            diff_pct = ((high_stock - low_stock) / low_stock * 100)
-            return f"Stock availability has a significant impact on sales. Products with above-median stock levels sell {high_stock:.0f} units/day on average, compared to {low_stock:.0f} units/day for below-median stock - a {diff_pct:.1f}% difference."
-        
-        return None  # No analytical answer found, will fallback to RAG
-
     def run_rag_pipeline(self):
         """
         Run the complete RAG pipeline setup and testing.

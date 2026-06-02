@@ -56,9 +56,9 @@ rag:
   chunk_overlap: 200
   embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
   groq_model: "llama-3.1-8b-instant"  # Llama 3.1 8B via Groq, fast + cheap for RAG
-  max_tokens: 512
+  max_tokens: 900  # Enough headroom for 4-7 sentence grounded answers
   temperature: 0.2  # Low for grounded analytical answers
-  top_k: 5
+  top_k: 10  # Retrieve 10 chunks so year/region rollups aren't crowded out by daily docs
 
 # API Keys (replace with your actual keys)
 api_keys:
